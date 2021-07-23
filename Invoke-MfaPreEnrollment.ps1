@@ -234,7 +234,8 @@ Function Add-AzureAdApplicationForManagingAuthenticationOptions {
     # This site may also help https://gist.github.com/dgroh/7be0b6912a1d6dd6dac0729f2841a752
 
     # Scope means delegated access (on behalf of authenticated user), role means application access (app works without user authentication)
-
+    Write-Host "Connect using an account that has the rights to create azure application (global admin?)"
+    connect-AzureAD
     $UserAuthenticationMethodReadAll = [Microsoft.Open.AzureAD.Model.ResourceAccess]::new('38d9df27-64da-44fd-b7c5-a6fbac20248f','Role')
     $UserAuthenticationMethodReadWriteAll = [Microsoft.Open.AzureAD.Model.ResourceAccess]::new('50483e42-d915-4231-9639-7fdb7fd190e5','Role')
     $UserReadAll = [Microsoft.Open.AzureAD.Model.ResourceAccess]::new('df021288-bdef-4463-88db-98f22de89214','Role')
