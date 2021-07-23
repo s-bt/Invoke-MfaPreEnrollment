@@ -1,4 +1,4 @@
-#requires -module Az,ActiveDirectory
+#requires -module Az,ActiveDirectory,AzureAD
 #The function Invoke-ManageAuthenticationMethods has been borrowed from https://github.com/IdentityMan/AzureAD/blob/master/Configure-AuthenticationMethods.ps1
 
 Function Get-AzureAdUserAuthenticationMethods {
@@ -228,14 +228,40 @@ Function Test-phonenumber {
     $regEx = [regex]::new("^\+\d\d [\d]*")
     return $regEx.IsMatch($phoneNumber)
 }
+Function Add-AzureAdApplicationForManagingAuthenticationOptions {
+    #requires -module AzureAD
+    # Get-AzureADServiceAppRoleAssignedTo -ObjectId <Your-Object-Id> | select # use this to find out what access you have
+    # This site may also help https://gist.github.com/dgroh/7be0b6912a1d6dd6dac0729f2841a752
 
-########################################################################################
+    # Scope means delegated access (on behalf of authenticated user), role means application access (app works without user authentication)
+
+    $UserAuthenticationMethodReadAll = [Microsoft.Open.AzureAD.Model.ResourceAccess]::new('38d9df27-64da-44fd-b7c5-a6fbac20248f','Role')
+    $UserAuthenticationMethodReadWriteAll = [Microsoft.Open.AzureAD.Model.ResourceAccess]::new('50483e42-d915-4231-9639-7fdb7fd190e5','Role')
+    $UserReadAll = [Microsoft.Open.AzureAD.Model.ResourceAccess]::new('df021288-bdef-4463-88db-98f22de89214','Role')
+
+    $AppRequiredResourceAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
+    $AppRequiredResourceAccess.ResourceAppId = $ApplicationId
+    $AppRequiredResourceAccess.ResourceAccess = $UserAuthenticationMethodReadAll,$UserAuthenticationMethodReadWriteAll,$UserReadAll
+
+    $App = New-AzureADApplication -DisplayName 'Managed Users Authentication Options' -RequiredResourceAccess $AppRequiredResourceAccess -Verbose
+    $ServicePrincipal = New-AzureADServicePrincipal -AppId $app.AppId
+
+    Write-Host "You need to manually consent the permissions for the Azure app '$($app.DisplayName)' in the Azure AD portal" -ForegroundColor Green
+    write-host "Oopen 'https://aad.portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/CallAnAPI/appId/$($app.AppId)/isMSAApp/' and click on 'Grant Admin consent'" -ForegroundColor Green
+    #Start-Process "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" -ArgumentList "--profile-directory=Default https://aad.portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/CallAnAPI/appId/$($app.AppId)/isMSAApp/"
+}
+
+
+
+######################################################################################################
 # The Azure app that has the following api permission configureds:
 # User.Read.All
 # UserAuthenticationMethod.Read.All
 # If you also want to add/update/delete authentciation methods, you additionaly need
 # UserAuthenticationMethod.ReadWrite.All
-########################################################################################
+# You can create this app usnig the function Add-AzureAdApplicationForManagingAuthenticationOptions
+# Be sure to be logged in with the appropreate permissions to create the app (global admin?)
+######################################################################################################
 
 $ApplicationId = '<Your-app-id>'
 $ApplicationSecret = Read-Host -AsSecureString -Prompt "Secret for application with id '$($ApplicationId)'"
